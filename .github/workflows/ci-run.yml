@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+分支: [master]
   pull_request:
-    branches: [master]
+分支: [master]
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
@@ -128,6 +128,12 @@ jobs:
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeroclaw-${{ matrix.target }}
+          path: target/${{ matrix.target }}/ci/zeroclaw
 
   docs-quality:
     name: Docs Quality
