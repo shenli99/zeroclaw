@@ -1,0 +1,32 @@
+name: Rust
+
+on:
+  push:
+分支: [ "master" ]
+  pull_request:
+分支: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --profile ci --bin zeroclaw --no-default-features
+      
+    - name: Prepare artifact
+      run: |
+        mkdir -p dist
+        cp target/ci/zeroclaw dist/zeroclaw
+        chmod +x dist/zeroclaw
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: zeroclaw-linux
+        path: dist/zeroclaw
