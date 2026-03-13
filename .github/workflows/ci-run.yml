@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-分支: [master]
+    分支: [master]
   pull_request:
-分支: [master]
+    分支: [master]
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
