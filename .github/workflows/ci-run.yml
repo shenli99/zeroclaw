@@ -103,36 +103,59 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            container:
-              image: almalinux:8
+            container: almalinux:8
             target: x86_64-unknown-linux-gnu
           - os: macos-14
             container: ""
             target: aarch64-apple-darwin
+  
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+      - uses: actions/checkout@v4
+  
+      - name: Install Linux deps
+        if: runner.os == 'Linux'
+        shell: sh
+        run: |
+          dnf install -y git curl gcc gcc-c++ make perl-core pkgconfig
+  
+      - name: Install Rust in Linux container
+        if: runner.os == 'Linux'
+        shell: sh
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          . "$HOME/.cargo/env"
+          rustup toolchain install 1.92.0
+          rustup default 1.92.0
+  
+      - name: Setup Rust on macOS
+        if: runner.os == 'macOS'
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7
         with:
           toolchain: 1.92.0
           targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
-
-      - name: Install mold linker
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y mold
-
+  
+      - uses: Swatinem/rust-cache@v2
+  
       - name: Ensure web/dist placeholder exists
         run: mkdir -p web/dist && touch web/dist/.gitkeep
-
-      - name: Build release
-        shell: bash
+  
+      - name: Build on Linux
+        if: runner.os == 'Linux'
+        shell: sh
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --profile ci --locked --target ${{ matrix.target }}
+  
+      - name: Build on macOS
+        if: runner.os == 'macOS'
         run: cargo build --profile ci --locked --target ${{ matrix.target }}
-        env:
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
-
+  
+      - name: Check GLIBC requirement
+        if: runner.os == 'Linux'
+        shell: sh
+        run: |
+          strings target/${{ matrix.target }}/ci/zeroclaw | grep -o 'GLIBC_[0-9.]\+' | sort -V | tail
+  
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
